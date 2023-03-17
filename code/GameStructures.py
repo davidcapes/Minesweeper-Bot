@@ -11,15 +11,6 @@ class Cell:
         self.flagged = flagged
         self.surrounding_count = surrounding_count
 
-    def __str__(self):
-        return str(hash(self))
-
-    def __repr__(self):
-        return str(self)
-
-    def __hash__(self):
-        return self.revealed + 2*self.mine + 4*self.flagged
-
 
 class GameOutcome(enum.Enum):
     WIN = 1
@@ -120,7 +111,8 @@ class Game:
             for n_c in range(self.__columns__):
                 if self.__grid__[n_r][n_c].revealed and not self.__grid__[n_r][n_c].mine:
                     for b_r, b_c in self.get_surrounding_cells(n_r, n_c):
-                        if not self.__grid__[b_r][b_c].revealed and (include_flagged or not self.__grid__[b_r][b_c].flagged):
+                        if ((include_flagged or not self.__grid__[b_r][b_c].flagged) and
+                                not self.__grid__[b_r][b_c].revealed):
                             border_cells.add((b_r, b_c))
         return tuple(border_cells)
 
@@ -189,7 +181,8 @@ class Game:
                 self.__single_unreveal__(r, c)
 
     def flag(self, row, column):
-        if self.__unused_flag_count__ > 0 and not self.__grid__[row][column].revealed and not self.__grid__[row][column].flagged:
+        if (self.__unused_flag_count__ > 0 and not self.__grid__[row][column].revealed and
+                not self.__grid__[row][column].flagged):
             self.__grid__[row][column].flagged = True
             self.__unused_flag_count__ -= 1
 

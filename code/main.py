@@ -1,7 +1,6 @@
 import pygame
 import sys
 
-from GameStructures import *
 from Bot import *
 
 
@@ -22,7 +21,6 @@ screen = pygame.display.set_mode((COLUMNS*IMAGE_SIZE, ROWS*IMAGE_SIZE))
 pygame.display.set_caption("Minesweeper")
 pygame.display.set_icon(pygame.image.load('../skins/icon.png'))
 
-
 # Load Skins.
 NUM_DICT = {i: pygame.image.load(f'../skins/numbers/{i}.png') for i in range(1, 9)}
 REVEALED_CELL = pygame.image.load('../skins/revealed_square.png')
@@ -32,7 +30,7 @@ COVERED_CELL_HIGHLIGHTED = pygame.image.load('../skins/covered_square_highlighte
 FLAG = pygame.image.load('../skins/flag.png')
 LOST_REVEALED_CELL = pygame.image.load('../skins/lost_square_highlighted.png')
 
-probability_skins = {NOT_MINE: pygame.image.load('../skins/probabilities/1.png'),
+PROBABILITY_SKINS = {NOT_MINE: pygame.image.load('../skins/probabilities/1.png'),
                      MINE: pygame.image.load('../skins/probabilities/0.png'),
                      1.0: pygame.image.load('../skins/probabilities/10.png'),
                      0.9: pygame.image.load('../skins/probabilities/09.png'),
@@ -49,15 +47,14 @@ probability_skins = {NOT_MINE: pygame.image.load('../skins/probabilities/1.png')
 
 # Initialize Game Variables.
 game = Game(ROWS, COLUMNS, MINES)
-selected_cell = 0, 0
+selected_row, selected_column = 0, 0
 probability_tables = {}
 bot = Bot(game)
-
 
 # Main Loop
 while True:
     for event in pygame.event.get():
-        selected_cell = pygame.mouse.get_pos()[1] // IMAGE_SIZE, pygame.mouse.get_pos()[0] // IMAGE_SIZE
+        selected_row, selected_column = pygame.mouse.get_pos()[1] // IMAGE_SIZE, pygame.mouse.get_pos()[0] // IMAGE_SIZE
 
         # Exit Game
         if event.type == pygame.QUIT:
@@ -66,46 +63,37 @@ while True:
         # Make Moves
         pressed_keys = pygame.key.get_pressed()
         if event.type == pygame.MOUSEBUTTONDOWN:
-            r, c = selected_cell
             if event.button == 1:
-                game.chain_reveal(r, c)
+                game.chain_reveal(selected_row, selected_column)
             elif event.button == 3:
-                if game.is_flagged(r, c):
-                    game.unflag(r, c)
-                elif not game.is_flagged(r, c):
-                    game.flag(r, c)
+                if not game.is_flagged(selected_row, selected_column):
+                    game.flag(selected_row, selected_column)
+                elif game.is_flagged(selected_row, selected_column):
+                    game.unflag(selected_row, selected_column)
             probability_tables.clear()
 
-        # Undo Moves
-        if event.type == pygame.KEYDOWN and event.key == pygame.K_BACKSPACE:
-            game.undo_reveal()
-            bot.to_flag.clear()
-            bot.to_reveal.clear()
-            probability_tables.clear()
+        if event.type == pygame.KEYDOWN:
 
-        # Restart
-        if event.type == pygame.KEYDOWN and event.key == pygame.K_r:
-            game = Game(ROWS, COLUMNS, MINES)
-            bot = Bot(game)
+            # Undo Moves
+            if event.key == pygame.K_BACKSPACE:
+                game.undo_reveal()
+                bot.to_flag.clear()
+                bot.to_reveal.clear()
+                probability_tables.clear()
 
-        # Quit
-        if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-            sys.exit()
+            # Restart
+            if event.key == pygame.K_r:
+                game = Game(ROWS, COLUMNS, MINES)
+                bot = Bot(game)
 
-        # Fast chain deduction Bot.
-        if pressed_keys[pygame.K_SPACE] and pressed_keys[pygame.K_b]:
-            bot.take_action()
-            for r, c in bot.to_reveal:
-                if not game.is_revealed(r, c):
-                    game.chain_reveal(r, c)
-            for r, c in bot.to_flag:
-                game.flag(r, c)
-            probability_tables.clear()
+            # Quit
+            if event.key == pygame.K_ESCAPE:
+                sys.exit()
 
-        # Single Deduction Bot.
-        elif event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
-            bot.take_action()
-            probability_tables.clear()
+            # Single Deduction Bot.
+            if event.key == pygame.K_SPACE:
+                bot.take_action()
+                probability_tables.clear()
 
         # Chain deduction Bot.
         elif pressed_keys[pygame.K_b]:
@@ -121,7 +109,7 @@ while True:
             if probability_tables:
                 probability_tables.clear()
 
-    # Display Everything.
+    # Display Minesweeper Game.
     for row in range(ROWS):
         for column in range(COLUMNS):
             if game.is_revealed(row, column):
@@ -134,7 +122,7 @@ while True:
                     if surrounding_mines > 0:
                         screen.blit(NUM_DICT[surrounding_mines], (column * IMAGE_SIZE, row * IMAGE_SIZE))
             else:
-                if (row, column) == selected_cell:
+                if row == selected_row and column == selected_column:
                     screen.blit(COVERED_CELL_HIGHLIGHTED, (column * IMAGE_SIZE, row * IMAGE_SIZE))
                 else:
                     screen.blit(COVERED_CELL, (column * IMAGE_SIZE, row * IMAGE_SIZE))
@@ -149,10 +137,10 @@ while True:
     for r, c in probability_tables:
         prob = probability_tables[(r, c)]
         if prob == 1.0:
-            screen.blit(probability_skins[NOT_MINE], (c * IMAGE_SIZE, r * IMAGE_SIZE))
+            screen.blit(PROBABILITY_SKINS[NOT_MINE], (c * IMAGE_SIZE, r * IMAGE_SIZE))
         elif prob == 0.0:
-            screen.blit(probability_skins[MINE], (c * IMAGE_SIZE, r * IMAGE_SIZE))
+            screen.blit(PROBABILITY_SKINS[MINE], (c * IMAGE_SIZE, r * IMAGE_SIZE))
         else:
-            screen.blit(probability_skins[round(prob, 1)], (c * IMAGE_SIZE, r * IMAGE_SIZE))
+            screen.blit(PROBABILITY_SKINS[round(prob, 1)], (c * IMAGE_SIZE, r * IMAGE_SIZE))
 
     pygame.display.update()
